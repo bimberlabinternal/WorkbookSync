@@ -37,6 +37,13 @@ def normalizeSlash(text):
 
 	return text
 
+def isInteger(text):
+	try:
+		return text.isdigit()
+	except TypeError:
+		return False
+		
+		
 if __name__ == "__main__":
 	arguments = docopt(__doc__, version="LabKey Experiment Sync Tool {0}".format(1.0), options_first=False)
 
@@ -59,8 +66,16 @@ if __name__ == "__main__":
 				print('splitting name on underscore')
 				fileName = fileName.split('_')[0]
 
+			if not isInteger(fileName):
+				print("Non-integer folder, skipping: " + fileName)
+				continue
+				
 			url = pieces.scheme + '://' + urllib.parse.quote(username) + ':' + urllib.parse.quote(password) + '@' + pieces.netloc + pieces.path + '_webdav' + normalizeSlash(containerPath) + normalizeSlash(fileName) + '/%40files/'
 			args = [java, '-jar', jar, '-up', '-u', url, '-d', path]
-			subprocess.call(args)
+			#print(args)
+			code = subprocess.call(args)
+			#print(code)
 		else:
 			print('skipping file: ' + fileName)
+
+	print("Done")
