@@ -43,7 +43,13 @@ def isInteger(text):
 	except TypeError:
 		return False
 		
-		
+def processFolder(java, jar, urlBase, subDir, localPath):
+	url = urlBase + subDir
+	args = [java, '-jar', jar, '-up', '-u', url, '-d', localPath, '-r', '-force']
+	#print(args)
+	code = subprocess.call(args)
+	#print(code)
+
 if __name__ == "__main__":
 	arguments = docopt(__doc__, version="LabKey Experiment Sync Tool {0}".format(1.0), options_first=False)
 
@@ -60,7 +66,6 @@ if __name__ == "__main__":
 	for fileName in os.listdir(localFolder):
 		path = os.path.join(localFolder, fileName)
 		if os.path.isdir(path):
-			print('Processing folder: ' + fileName)
 			pieces = urllib.parse.urlparse(baseurl)
 			if splitFolderNameOnUnderscore:
 				print('splitting name on underscore')
@@ -69,13 +74,13 @@ if __name__ == "__main__":
 			if not isInteger(fileName):
 				print("Non-integer folder, skipping: " + fileName)
 				continue
-				
-			url = pieces.scheme + '://' + urllib.parse.quote(username) + ':' + urllib.parse.quote(password) + '@' + pieces.netloc + pieces.path + '_webdav' + normalizeSlash(containerPath) + normalizeSlash(fileName) + '/%40files/'
-			args = [java, '-jar', jar, '-up', '-u', url, '-d', path]
-			#print(args)
-			code = subprocess.call(args)
-			#print(code)
+			
+			url = pieces.scheme + '://' + urllib.parse.quote(username) + ':' + urllib.parse.quote(password) + '@' + pieces.netloc + pieces.path + '_webdav' + normalizeSlash(containerPath) + normalizeSlash(fileName) + '/@files/'
+			
+			processFolder(java, jar, url, '', path)
 		else:
 			print('skipping file: ' + fileName)
+			
+			
 
-	print("Done")
+	print("Sync Done")
