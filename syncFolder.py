@@ -8,7 +8,7 @@ which will be numbered.  There should be a folder on your computer with subfolde
 will be copied to the corresponding workbook, preserving any subfolder.
 
 Usage:
-    syncFolder.py --serverUrl=<SERVER_URL> --labkeyFolderPath=<LABKEY_FOLDER> --localFolder=<LOCAL_FOLDER> --username=<USERNAME> --password=<PASSWORD> --jarFile=<JAR_FILE> [--splitFolderNameOnUnderscore]
+    syncFolder.py --serverUrl=<SERVER_URL> --labkeyFolderPath=<LABKEY_FOLDER> --localFolder=<LOCAL_FOLDER> --username=<USERNAME> --password=<PASSWORD> --jarFile=<JAR_FILE> [--splitFolderNameOnUnderscore] [--lastExecutionFile=<FILE_PATH>]
 
 Oprions:
     -h, --help                                       Show this screen.
@@ -19,13 +19,16 @@ Oprions:
     --password=<PASSWORD>                            The LabKey password
     --jarFile=<JAR_FILE>                             The path to the webdavsync JAR file.  This should be downloaded separately from https://sourceforge.net/projects/webdav-sync/files/latest/download
     --splitFolderNameOnUnderscore                    Normally the sync tool expects the subdirectories to match workbook #s (i.e. 1, 2, 3, 4).  If this switch is provided, the tool will split the foldername using underscore and take the first element as the workbook #.
+	--lastExecutionFile=<FILE_PATH>					 Optional. If provided this file will store the last execution time of this script.  Directories with a max modified time less than this value will be skipped.
 
 """
 
 from docopt import docopt
+from natsort import natsorted
 import os
 import urllib.parse
 import subprocess
+import time
 
 
 def normalizeSlash(text):
@@ -51,19 +54,32 @@ def processFolder(java, jar, urlBase, subDir, localPath):
 	#print(code)
 
 if __name__ == "__main__":
-	arguments = docopt(__doc__, version="LabKey Experiment Sync Tool {0}".format(1.0), options_first=False)
+	arguments = docopt(__doc__, version='LabKey Experiment Sync Tool {0}'.format(1.0), options_first=False)
 
 	username=arguments['--username']
 	password=arguments['--password']
 	baseurl = arguments['--serverUrl']
 	containerPath = arguments['--labkeyFolderPath']
 	localFolder = arguments['--localFolder']
+	lastExecutionFile = arguments['--lastExecutionFile']
 	splitFolderNameOnUnderscore = arguments['--splitFolderNameOnUnderscore']
 	jar = arguments['--jarFile']
 
+	#Time in seconds
+	startMills = int(round(time.time() * 1000))	 
+	lastRunTime = 0
+	if lastExecutionFile != None and os.path.exists(lastExecutionFile):
+		with open(lastExecutionFile, 'r') as myfile:
+			lines = ''.join(myfile.readlines()).strip()
+			if (lines != None and lines != ''):
+				lastRunTime = int(lines)
+				print('Last run time: ' + str(lastRunTime))
+	
 	java = 'java'
-
-	for fileName in os.listdir(localFolder):
+	
+	files = natsorted(os.listdir(localFolder))
+	files.reverse()	
+	for fileName in files:
 		path = os.path.join(localFolder, fileName)
 		if os.path.isdir(path):
 			pieces = urllib.parse.urlparse(baseurl)
@@ -72,15 +88,23 @@ if __name__ == "__main__":
 				fileName = fileName.split('_')[0]
 
 			if not isInteger(fileName):
-				print("Non-integer folder, skipping: " + fileName)
+				print('Non-integer folder, skipping: ' + fileName)
 				continue
 			
-			url = pieces.scheme + '://' + urllib.parse.quote(username) + ':' + urllib.parse.quote(password) + '@' + pieces.netloc + pieces.path + '_webdav' + normalizeSlash(containerPath) + normalizeSlash(fileName) + '/@files/'
-			
+			print('processing: ' + fileName)
+			maxModifiedTime = max(os.path.getmtime(root) for root,_,_ in os.walk(path))
+			if maxModifiedTime < lastRunTime:
+				print('Folder has not been modified since last sync, skipping')
+				continue
+
+			url = pieces.scheme + '://' + urllib.parse.quote(username) + ':' + urllib.parse.quote(password) + '@' + pieces.netloc + pieces.path + '_webdav' + normalizeSlash(containerPath) + normalizeSlash(fileName) + '/@files/'			
 			processFolder(java, jar, url, '', path)
 		else:
 			print('skipping file: ' + fileName)
 			
 			
-
-	print("Sync Done")
+	if lastExecutionFile != None:
+		with open(lastExecutionFile, 'w') as myfile:
+			lastRun = myfile.write(str(startMills))
+	
+	print('Sync Done')

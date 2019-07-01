@@ -1,3 +1,4 @@
-webdav_sync1_1_6.jar
+*.jar
 windows/derby.log
 windows/log.txt
+derby.log
