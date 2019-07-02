@@ -66,7 +66,7 @@ if __name__ == "__main__":
 	jar = arguments['--jarFile']
 
 	#Time in seconds
-	startMills = int(round(time.time() * 1000))	 
+	startMills = int(round(time.time()))	 
 	lastRunTime = 0
 	if lastExecutionFile != None and os.path.exists(lastExecutionFile):
 		with open(lastExecutionFile, 'r') as myfile:
