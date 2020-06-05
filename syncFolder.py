@@ -29,7 +29,7 @@ import os
 import urllib.parse
 import subprocess
 import time
-
+import datetime
 
 def normalizeSlash(text):
 	if text.endswith('/'):
@@ -49,9 +49,10 @@ def isInteger(text):
 def processFolder(java, jar, urlBase, subDir, localPath):
 	url = urlBase + subDir
 	args = [java, '-jar', jar, '-up', '-u', url, '-d', localPath, '-r', '-force']
-	#print(args)
+	#print(' '.join(args))
 	code = subprocess.call(args)
-	#print(code)
+	if code > 0:
+		print('Non-zero exit: ' + str(code))
 
 if __name__ == "__main__":
 	arguments = docopt(__doc__, version='LabKey Experiment Sync Tool {0}'.format(1.0), options_first=False)
@@ -73,7 +74,7 @@ if __name__ == "__main__":
 			lines = ''.join(myfile.readlines()).strip()
 			if (lines != None and lines != ''):
 				lastRunTime = int(lines)
-				print('Last run time: ' + str(lastRunTime))
+				print('Last run time: ' + str(lastRunTime) + ' / ' + str(datetime.datetime.fromtimestamp(lastRunTime)))
 	
 	java = 'java'
 	
@@ -92,12 +93,18 @@ if __name__ == "__main__":
 				continue
 			
 			print('processing: ' + fileName)
-			maxModifiedTime = max(os.path.getmtime(root) for root,_,_ in os.walk(path))
+			
+			maxModifiedTime = 0
+			for dirName, subdirList, fileList in os.walk(path):
+				maxModifiedTime = max(maxModifiedTime, os.path.getmtime(dirName))
+				for fname in fileList:
+					maxModifiedTime = max(maxModifiedTime, os.path.getmtime(os.path.join(dirName, fname)))
+			
 			if maxModifiedTime < lastRunTime:
 				print('Folder has not been modified since last sync, skipping')
 				continue
 
-			url = pieces.scheme + '://' + urllib.parse.quote(username) + ':' + urllib.parse.quote(password) + '@' + pieces.netloc + pieces.path + '_webdav' + normalizeSlash(containerPath) + normalizeSlash(fileName) + '/@files/'			
+			url = pieces.scheme + '://' + urllib.parse.quote(username, safe='') + ':' + urllib.parse.quote(password, safe='') + '@' + pieces.netloc + pieces.path + '_webdav' + normalizeSlash(containerPath) + normalizeSlash(fileName) + '/@files/'			
 			processFolder(java, jar, url, '', path)
 		else:
 			print('skipping file: ' + fileName)
