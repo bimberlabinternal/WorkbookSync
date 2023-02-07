@@ -52,7 +52,7 @@ def processFolder(java, jar, urlBase, subDir, localPath):
 	#print(' '.join(args))
 	code = subprocess.call(args)
 	if code > 0:
-		print('Non-zero exit: ' + str(code))
+		print('Non-zero exit: ' + str(code) + ', for path: ' + localPath)
 
 if __name__ == "__main__":
 	arguments = docopt(__doc__, version='LabKey Experiment Sync Tool {0}'.format(1.0), options_first=False)
@@ -105,7 +105,11 @@ if __name__ == "__main__":
 				continue
 
 			url = pieces.scheme + '://' + urllib.parse.quote(username, safe='') + ':' + urllib.parse.quote(password, safe='') + '@' + pieces.netloc + pieces.path + '_webdav' + normalizeSlash(containerPath) + normalizeSlash(fileName) + '/@files/'			
-			processFolder(java, jar, url, '', path)
+			try:
+				processFolder(java, jar, url, '', path)
+			except:
+				print('Unable to upload file: ' + path)
+
 		else:
 			print('skipping file: ' + fileName)
 			
